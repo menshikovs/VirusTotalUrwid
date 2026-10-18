@@ -3,12 +3,11 @@
 import os
 from concurrent.futures import Future, ThreadPoolExecutor
 
+import pyperclip
 import urwid
 from dotenv import load_dotenv
-import pyperclip
 
 from virustotal import VirusTotal, VirusTotalError, extract_stats
-
 
 PALETTE = [
     ("header", "white,bold", "dark blue"),
@@ -30,30 +29,59 @@ class ScannerApp:
         self.future: Future | None = None
 
         self.mode_group = []
-        self.mode_hash = urwid.RadioButton(self.mode_group, "SHA-256", state=True, on_state_change=self._hash_selected)
-        self.mode_url = urwid.RadioButton(self.mode_group, "URL", on_state_change=self._url_selected)
+        self.mode_hash = urwid.RadioButton(
+            self.mode_group, "SHA-256", state=True, on_state_change=self._hash_selected
+        )
+        self.mode_url = urwid.RadioButton(
+            self.mode_group, "URL", on_state_change=self._url_selected
+        )
         self.input = urwid.Edit(multiline=False)
         self.value_label = urwid.Text(("label", "SHA-256"))
         self.status = urwid.Text(("muted", "Enter a SHA-256 hash and press Scan."))
-        self.result_rows = urwid.SimpleFocusListWalker([
-            urwid.Text(("muted", "Scan results will appear here.")),
-        ])
+        self.result_rows = urwid.SimpleFocusListWalker(
+            [
+                urwid.Text(("muted", "Scan results will appear here.")),
+            ]
+        )
         self.result_list = urwid.ListBox(self.result_rows)
         self.scan_button = urwid.Button("  Scan  ", on_press=self._scan)
 
-        header = urwid.Pile([
-            ("pack", urwid.AttrMap(urwid.Text("VIRUSTOTAL SCANNER", align="center"), "header")),
-            ("pack", urwid.Text(("muted", "File and URL reputation checks with VirusTotal API v3"), align="center")),
-        ])
+        header = urwid.Pile(
+            [
+                (
+                    "pack",
+                    urwid.AttrMap(
+                        urwid.Text("VIRUSTOTAL SCANNER", align="center"), "header"
+                    ),
+                ),
+                (
+                    "pack",
+                    urwid.Text(
+                        (
+                            "muted",
+                            "File and URL reputation checks with VirusTotal API v3",
+                        ),
+                        align="center",
+                    ),
+                ),
+            ]
+        )
         mode_box = self._section(
             urwid.Columns([self.mode_hash, self.mode_url], dividechars=4),
             " 1 · MODE ",
         )
-        target_content = urwid.Pile([
-            ("pack", self.value_label),
-            ("pack", urwid.AttrMap(self.input, "", "focus")),
-            ("pack", urwid.Text(("muted", "Ctrl+V / Shift+Insert to paste from clipboard"))),
-        ])
+        target_content = urwid.Pile(
+            [
+                ("pack", self.value_label),
+                ("pack", urwid.AttrMap(self.input, "", "focus")),
+                (
+                    "pack",
+                    urwid.Text(
+                        ("muted", "Ctrl+V / Shift+Insert to paste from clipboard")
+                    ),
+                ),
+            ]
+        )
         target_box = self._section(target_content, " 2 · SCAN TARGET ")
         action_box = self._section(
             urwid.AttrMap(self.scan_button, "", "focus"),
@@ -61,21 +89,28 @@ class ScannerApp:
         )
         status_box = self._section(self.status, " STATUS ")
         results_box = self._section(self.result_list, " REPORT ")
-        self.pile = urwid.Pile([
-            ("pack", header),
-            ("pack", urwid.Divider()),
-            ("pack", mode_box),
-            ("pack", urwid.Divider()),
-            ("pack", target_box),
-            ("pack", urwid.Divider()),
-            ("pack", action_box),
-            ("pack", urwid.Divider()),
-            ("pack", status_box),
-            ("pack", urwid.Divider()),
-            ("weight", 1, results_box),
-            ("pack", urwid.Divider()),
-            ("pack", urwid.Text(("muted", "Tab: navigate   Enter: select   Ctrl+C or Q: quit"))),
-        ])
+        self.pile = urwid.Pile(
+            [
+                ("pack", header),
+                ("pack", urwid.Divider()),
+                ("pack", mode_box),
+                ("pack", urwid.Divider()),
+                ("pack", target_box),
+                ("pack", urwid.Divider()),
+                ("pack", action_box),
+                ("pack", urwid.Divider()),
+                ("pack", status_box),
+                ("pack", urwid.Divider()),
+                ("weight", 1, results_box),
+                ("pack", urwid.Divider()),
+                (
+                    "pack",
+                    urwid.Text(
+                        ("muted", "Tab: navigate   Enter: select   Ctrl+C or Q: quit")
+                    ),
+                ),
+            ]
+        )
         frame = urwid.Padding(self.pile, left=2, right=2)
         self.loop = urwid.MainLoop(
             urwid.LineBox(frame, title=" VT SCANNER ", title_attr="title"),
@@ -98,9 +133,18 @@ class ScannerApp:
 
     def _set_mode(self, mode):
         self.mode = mode
-        self.value_label.set_text(("label", "SHA-256 hash" if mode == "hash" else "URL"))
+        self.value_label.set_text(
+            ("label", "SHA-256 hash" if mode == "hash" else "URL")
+        )
         self.input.set_edit_text("")
-        self.status.set_text(("muted", "Enter a SHA-256 hash and press Scan." if mode == "hash" else "Enter a full URL, including http:// or https://."))
+        self.status.set_text(
+            (
+                "muted",
+                "Enter a SHA-256 hash and press Scan."
+                if mode == "hash"
+                else "Enter a full URL, including http:// or https://.",
+            )
+        )
         self.result_rows.clear()
         self.result_rows.append(urwid.Text(("muted", "Scan results will appear here.")))
 
@@ -109,12 +153,14 @@ class ScannerApp:
             try:
                 pasted = pyperclip.paste().replace("\r", " ").replace("\n", " ")
                 if pasted:
-                    before = self.input.edit_text[:self.input.edit_pos]
-                    after = self.input.edit_text[self.input.edit_pos:]
+                    before = self.input.edit_text[: self.input.edit_pos]
+                    after = self.input.edit_text[self.input.edit_pos :]
                     self.input.set_edit_text(before + pasted + after)
                     self.input.set_edit_pos(len(before) + len(pasted))
             except pyperclip.PyperclipException as exc:
-                self.status.set_text(("warning", f"Could not read the clipboard: {exc}"))
+                self.status.set_text(
+                    ("warning", f"Could not read the clipboard: {exc}")
+                )
             return
         if key in ("ctrl c", "q"):
             raise urwid.ExitMainLoop()
@@ -125,7 +171,9 @@ class ScannerApp:
             self.status.set_text(("warning", "Enter a SHA-256 hash or URL."))
             return
         if self.client is None:
-            self.status.set_text(("bad", "VT_API_KEY is missing. Add your API key to the .env file."))
+            self.status.set_text(
+                ("bad", "VT_API_KEY is missing. Add your API key to the .env file.")
+            )
             return
         if self.future is not None:
             return
@@ -135,7 +183,9 @@ class ScannerApp:
         self.scan_button.set_label("  Scanning…  ")
         self.status.set_text(("warning", "Request submitted. Waiting for VirusTotal…"))
         self.result_rows.clear()
-        self.result_rows.append(urwid.Text(("muted", "Waiting for VirusTotal to finish the analysis…")))
+        self.result_rows.append(
+            urwid.Text(("muted", "Waiting for VirusTotal to finish the analysis…"))
+        )
         self.loop.set_alarm_in(0.2, self._check_scan)
 
     def _check_scan(self, _loop, _user_data):
@@ -153,18 +203,23 @@ class ScannerApp:
             if stats["malicious"]:
                 verdict, style = f"Malicious detections: {stats['malicious']}", "bad"
             elif stats["suspicious"]:
-                verdict, style = f"Suspicious detections: {stats['suspicious']}", "warning"
+                verdict, style = (
+                    f"Suspicious detections: {stats['suspicious']}",
+                    "warning",
+                )
             else:
                 verdict, style = "No malicious or suspicious detections.", "ok"
             self.status.set_text((style, verdict))
-            self.result_rows.extend([
-                urwid.Text((style, f"VERDICT  {verdict}")),
-                urwid.Divider("─"),
-                self._stat_row("Malicious", stats["malicious"], "bad"),
-                self._stat_row("Suspicious", stats["suspicious"], "warning"),
-                self._stat_row("Harmless", stats["harmless"], "ok"),
-                self._stat_row("Undetected", stats["undetected"], "muted"),
-            ])
+            self.result_rows.extend(
+                [
+                    urwid.Text((style, f"VERDICT  {verdict}")),
+                    urwid.Divider("─"),
+                    self._stat_row("Malicious", stats["malicious"], "bad"),
+                    self._stat_row("Suspicious", stats["suspicious"], "warning"),
+                    self._stat_row("Harmless", stats["harmless"], "ok"),
+                    self._stat_row("Undetected", stats["undetected"], "muted"),
+                ]
+            )
         except VirusTotalError as exc:
             self.status.set_text(("warning", str(exc)))
         except Exception as exc:
@@ -172,10 +227,12 @@ class ScannerApp:
 
     @staticmethod
     def _stat_row(label, count, style):
-        return urwid.Columns([
-            ("weight", 1, urwid.Text((style, label))),
-            ("pack", urwid.Text((style, str(count)), align="right")),
-        ])
+        return urwid.Columns(
+            [
+                ("weight", 1, urwid.Text((style, label))),
+                ("pack", urwid.Text((style, str(count)), align="right")),
+            ]
+        )
 
     def run(self):
         load_dotenv()

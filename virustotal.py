@@ -20,7 +20,9 @@ class VirusTotal:
 
     def __init__(self, api_key: str, timeout: int = 20):
         if not api_key:
-            raise VirusTotalError("API key is missing. Set the VT_API_KEY environment variable.")
+            raise VirusTotalError(
+                "API key is missing. Set the VT_API_KEY environment variable."
+            )
         self.session = requests.Session()
         self.session.headers.update({"x-apikey": api_key, "accept": "application/json"})
         self.timeout = timeout
@@ -36,9 +38,14 @@ class VirusTotal:
         if response.status_code == 404:
             raise HashNotFound("No report was found in VirusTotal.")
         if response.status_code == 429:
-            raise VirusTotalError("VirusTotal request limit exceeded (HTTP 429). Try again later.")
+            raise VirusTotalError(
+                "VirusTotal request limit exceeded (HTTP 429). Try again later."
+            )
         if response.status_code in (401, 403):
-            raise VirusTotalError("VirusTotal rejected the API key or request (HTTP %s)." % response.status_code)
+            raise VirusTotalError(
+                "VirusTotal rejected the API key or request (HTTP %s)."
+                % response.status_code
+            )
         if not response.ok:
             detail = ""
             try:
@@ -46,7 +53,9 @@ class VirusTotal:
             except (ValueError, AttributeError):
                 pass
             suffix = f": {detail}" if detail else ""
-            raise VirusTotalError(f"VirusTotal error (HTTP {response.status_code}){suffix}")
+            raise VirusTotalError(
+                f"VirusTotal error (HTTP {response.status_code}){suffix}"
+            )
         try:
             return response.json()
         except ValueError as exc:
@@ -55,7 +64,9 @@ class VirusTotal:
     def scan_hash(self, sha256: str) -> dict[str, Any]:
         sha256 = sha256.strip().lower()
         if not re.fullmatch(r"[0-9a-f]{64}", sha256):
-            raise VirusTotalError("Enter a valid SHA-256 hash (64 hexadecimal characters).")
+            raise VirusTotalError(
+                "Enter a valid SHA-256 hash (64 hexadecimal characters)."
+            )
         return self._request("GET", f"/files/{sha256}")
 
     def scan_url(self, url: str, wait_seconds: int = 60) -> dict[str, Any]:
@@ -79,13 +90,24 @@ class VirusTotal:
                     except VirusTotalError:
                         pass
                 # Analysis statistics remain useful if the URL report is not yet available.
-                return {"data": {"attributes": {"last_analysis_stats": attributes.get("stats", {})}}}
+                return {
+                    "data": {
+                        "attributes": {
+                            "last_analysis_stats": attributes.get("stats", {})
+                        }
+                    }
+                }
             if time.monotonic() >= deadline:
-                raise VirusTotalError("The analysis is still running. Try checking the URL again later.")
+                raise VirusTotalError(
+                    "The analysis is still running. Try checking the URL again later."
+                )
             time.sleep(min(5, max(1, deadline - time.monotonic())))
 
 
 def extract_stats(report: dict[str, Any]) -> dict[str, int]:
     attributes = report.get("data", {}).get("attributes", {})
     stats = attributes.get("last_analysis_stats") or attributes.get("stats") or {}
-    return {name: int(stats.get(name, 0) or 0) for name in ("malicious", "suspicious", "harmless", "undetected")}
+    return {
+        name: int(stats.get(name, 0) or 0)
+        for name in ("malicious", "suspicious", "harmless", "undetected")
+    }

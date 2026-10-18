@@ -1,0 +1,3 @@
+[tool.ruff.lint]
+select = ["E", "F", "B", "I"]
+ignore = ["B008", "E501"]
