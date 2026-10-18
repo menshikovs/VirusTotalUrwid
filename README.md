@@ -13,7 +13,7 @@ A small terminal application for checking SHA-256 file hashes and URLs with the 
 
 ## Requirements
 
-- Python 3.9 or newer
+- Python 3.10 or newer
 - A VirusTotal API key
 
 ## Installation
